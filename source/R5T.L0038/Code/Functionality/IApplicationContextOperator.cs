@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using R5T.T0132;
 using R5T.T0159;
@@ -34,6 +35,15 @@ namespace R5T.L0038
         {
             var start = this.Get_Start();
 
+            return this.Get_ApplicationContext(
+                applicationName,
+                start);
+        }
+
+        public (IApplicationContext applicationContext, string humanOutputTextFilePath, string logFilePath) Get_ApplicationContext(
+            IApplicationName applicationName,
+            ITimestamp start)
+        {
             var localRunSpecificDirectoryPath = Instances.DirectoryPathOperator.Get_LocalRunSpecificDirectoryPath(
                 applicationName,
                 start);
@@ -73,6 +83,29 @@ namespace R5T.L0038
             await action(applicationContext);
 
             if(applicationContext.TextOutput.Logger is IDisposable disposableLogger)
+            {
+                disposableLogger.Dispose();
+            }
+
+            return (humanOutputTextFilePath, logFilePath);
+        }
+
+        /// <summary>
+        /// Gets an application context, only considering the application name and not its start time.
+        /// </summary>
+        public async Task<(string humanOutputTextFilePath, string logFilePath)> In_ApplicationContext_Undated(
+            IApplicationName applicationName,
+            Func<IApplicationContext, Task> action)
+        {
+            var start = Instances.Timestamps.Undated;
+
+            var (applicationContext, humanOutputTextFilePath, logFilePath) = this.Get_ApplicationContext(
+                applicationName,
+                start);
+
+            await action(applicationContext);
+
+            if (applicationContext.TextOutput.Logger is IDisposable disposableLogger)
             {
                 disposableLogger.Dispose();
             }
