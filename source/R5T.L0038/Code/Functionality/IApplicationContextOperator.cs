@@ -1,10 +1,11 @@
 using System;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
+
 using R5T.T0132;
-using R5T.T0159;
 using R5T.T0175;
 using R5T.T0175.Extensions;
+using R5T.T0181;
+using R5T.T0181.Extensions;
 using R5T.T0192;
 
 
@@ -44,6 +45,21 @@ namespace R5T.L0038
             IApplicationName applicationName,
             ITimestamp start)
         {
+            var output = new ApplicationContext();
+
+            var (humanOutputTextFilePath, logFilePath) = this.Fill_ApplicationContext(
+                applicationName,
+                start,
+                output);
+
+            return (output, humanOutputTextFilePath, logFilePath);
+        }
+
+        public (string humanOuputTextFilePath, string logFilePath) Fill_ApplicationContext(
+            IApplicationName applicationName,
+            ITimestamp start,
+            ApplicationContext applicationContext)
+        {
             var localRunSpecificDirectoryPath = Instances.DirectoryPathOperator.Get_LocalRunSpecificDirectoryPath(
                 applicationName,
                 start);
@@ -55,15 +71,41 @@ namespace R5T.L0038
                 applicationName.Value,
                 logFilePath);
 
-            var output = new ApplicationContext
-            {
-                ApplicationName = applicationName,
-                Start = start,
-                TextOutput = textOutput,
-                LocalRunSpecificDirectoryPath = localRunSpecificDirectoryPath,
-            };
+            applicationContext.ApplicationName = applicationName;
+            applicationContext.Start = start;
+            applicationContext.TextOutput = textOutput;
+            applicationContext.LocalRunSpecificDirectoryPath = localRunSpecificDirectoryPath;
 
-            return (output, humanOutputTextFilePath, logFilePath);
+            return (humanOutputTextFilePath, logFilePath);
+        }
+
+        public (TApplicationContext applicationContext, ITextFilePath humanOutputTextFilePath, ILogFilePath logFilePath) Get_ApplicationContext<TApplicationContext>(
+            IApplicationName applicationName,
+            Func<TApplicationContext> applicationContextConstructor)
+            where TApplicationContext : ApplicationContext
+        {
+            var start = this.Get_Start();
+
+            return this.Get_ApplicationContext(
+                applicationName,
+                start,
+                applicationContextConstructor);
+        }
+
+        public (TApplicationContext applicationContext, ITextFilePath humanOutputTextFilePath, ILogFilePath logFilePath) Get_ApplicationContext<TApplicationContext>(
+            IApplicationName applicationName,
+            ITimestamp start,
+            Func<TApplicationContext> applicationContextConstructor)
+            where TApplicationContext : ApplicationContext
+        {
+            var output = applicationContextConstructor();
+
+            var (humanOutputTextFilePath, logFilePath) = this.Fill_ApplicationContext(
+                applicationName,
+                start,
+                output);
+
+            return (output, humanOutputTextFilePath.ToTextFilePath(), logFilePath.ToLogFilePath());
         }
 
         public (string humanOutputTextFilePath, string logFilePath) Get_TextOutputFilePaths(ILocalRunSpecificDirectoryPath localRunSpecificDirectoryPath)
@@ -82,12 +124,51 @@ namespace R5T.L0038
 
             await action(applicationContext);
 
-            if(applicationContext.TextOutput.Logger is IDisposable disposableLogger)
+            this.Dispose_ApplicationContext(applicationContext);
+
+            return (humanOutputTextFilePath, logFilePath);
+        }
+
+        public (ITextFilePath humanOutputTextFilePath, ILogFilePath logFilePath) In_ApplicationContext<TApplicationContext>(
+            IApplicationName applicationName,
+            Func<TApplicationContext> applicationContextConstructor,
+            Action<TApplicationContext> applicationContextAction)
+            where TApplicationContext : ApplicationContext
+        {
+            var (applicationContext, humanOutputTextFilePath, logFilePath) = this.Get_ApplicationContext(
+                applicationName,
+                applicationContextConstructor);
+
+            applicationContextAction(applicationContext);
+
+            this.Dispose_ApplicationContext(applicationContext);
+
+            return (humanOutputTextFilePath, logFilePath);
+        }
+
+        public async Task<(ITextFilePath humanOutputTextFilePath, ILogFilePath logFilePath)> In_ApplicationContext<TApplicationContext>(
+            IApplicationName applicationName,
+            Func<TApplicationContext> applicationContextConstructor,
+            Func<TApplicationContext, Task> applicationContextAction)
+            where TApplicationContext : ApplicationContext
+        {
+            var (applicationContext, humanOutputTextFilePath, logFilePath) = this.Get_ApplicationContext(
+                applicationName,
+                applicationContextConstructor);
+
+            await applicationContextAction(applicationContext);
+
+            this.Dispose_ApplicationContext(applicationContext);
+
+            return (humanOutputTextFilePath, logFilePath);
+        }
+
+        public void Dispose_ApplicationContext(IApplicationContext applicationContext)
+        {
+            if (applicationContext.TextOutput.Logger is IDisposable disposableLogger)
             {
                 disposableLogger.Dispose();
             }
-
-            return (humanOutputTextFilePath, logFilePath);
         }
 
         /// <summary>
@@ -105,10 +186,7 @@ namespace R5T.L0038
 
             await action(applicationContext);
 
-            if (applicationContext.TextOutput.Logger is IDisposable disposableLogger)
-            {
-                disposableLogger.Dispose();
-            }
+            this.Dispose_ApplicationContext(applicationContext);
 
             return (humanOutputTextFilePath, logFilePath);
         }
