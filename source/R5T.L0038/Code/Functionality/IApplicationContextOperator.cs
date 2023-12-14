@@ -28,7 +28,7 @@ namespace R5T.L0038
 
         public ITimestamp Get_Start()
         {
-            var start = Instances.NowOperator.GetNow().ToTimestamp();
+            var start = Instances.NowOperator.Get_Now().ToTimestamp();
             return start;
         }
 
