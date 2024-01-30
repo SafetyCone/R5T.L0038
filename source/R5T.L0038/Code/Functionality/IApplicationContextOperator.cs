@@ -110,8 +110,8 @@ namespace R5T.L0038
 
         public (string humanOutputTextFilePath, string logFilePath) Get_TextOutputFilePaths(ILocalRunSpecificDirectoryPath localRunSpecificDirectoryPath)
         {
-            var humanOutputTextFilePath = Instances.PathOperator.GetFilePath(localRunSpecificDirectoryPath.Value, "Human Output.txt");
-            var logFilePath = Instances.PathOperator.GetFilePath(localRunSpecificDirectoryPath.Value, "Log.txt");
+            var humanOutputTextFilePath = Instances.PathOperator.Get_FilePath(localRunSpecificDirectoryPath.Value, "Human Output.txt");
+            var logFilePath = Instances.PathOperator.Get_FilePath(localRunSpecificDirectoryPath.Value, "Log.txt");
 
             return (humanOutputTextFilePath, logFilePath);
         }
